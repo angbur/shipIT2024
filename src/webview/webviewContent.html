@@ -9,42 +9,60 @@
     <title>Chat with GPT</title>
     <style>
         .hljs {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 0.5em;
             display: block;
             overflow-x: auto;
-            padding: 0.5em;
-            color: #abb2bf;
         }
+        .hljs-keyword { color: #c678dd; }
+        .hljs-string { color: #98c379; }
+        .hljs-comment { color: #5c6370; }
+        .hljs-number { color: #d19a66; }
+        .hljs-regexp { color: #56b6c2; }
+        .hljs-link {
+            color: #61aeee;
+        }
+
         .language-label {
             position: absolute;
             top: 5px;
             left: 5px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            color: black;
             padding: 2px 6px;
             font-size: 0.8em;
             text-transform: uppercase;
         }
         .message {
+            display: flex;
+            align-items: flex-start;
+            flex-direction: row;
             margin-bottom: 10px;
             padding: 10px;
             border-radius: 4px;
             position: relative;
-            display: flex;
-            align-items: center;
             width: fit-content;
             max-width: 80%;
         }
 
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+
         .user {
-            background-color: #2f6896;
+            background-color: #D32E93;
             color: white;
             margin-left: auto;
             align-self: flex-end;
         }
 
         .assistant {
-            background-color: #575656;
-            color: #dcdcdc;
+            background-color: #26262B;
+            color: #fff;
             margin-right: auto;
             align-self: flex-start;
         }
@@ -82,7 +100,7 @@
 
         .codeBlock {
             position: relative;
-            background: #282c34;
+            background: #282c34 !important;
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 4px; 
@@ -111,8 +129,6 @@
             flex-grow: 1;
             overflow-y: auto;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
             padding-bottom: 60px;
         }
         #input-area {
@@ -134,7 +150,7 @@
         #input-area input {
             flex-grow: 1;
             padding: 10px;
-            margin-right: 10px;
+            margin-right: 2rem;
             border: none;
             border-radius: 4px;
         }
@@ -168,6 +184,10 @@
             bottom: 100%;
             align-items: flex-end;
         }
+        #message-input {
+            background: none;
+            color: white;
+        }
         .chat-button {
             padding: 10px 20px;
             border: 2px solid #fff;
@@ -180,11 +200,12 @@
         .duck-icon {
             width: 20px;
             height: 20px;
+            margin-top: 2rem;
         }
         .microphone-icon {
             width: 20px;
             height: 20px;
-            margin-left: 10px;
+            margin: 0 1rem;
             cursor: pointer;
         }
 
@@ -196,6 +217,25 @@
             border-radius: 50%;
             animation: pulse 1s infinite;
         }
+
+        #suggestion-area {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            background-color: #2c2c2c;
+            border-bottom: 1px solid #444;
+        }
+
+        .chat-button {
+            padding: 10px 20px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            color: black;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 5px;
+        }
+
 
         @keyframes pulse {
             0% {
@@ -215,11 +255,13 @@
 </head>
 <body>
     <div id="chat-container">
+        <div id="suggestion-area">
+            <button id="fetchGPTSuggestion" class="chat-button">Get GPT Suggestions</button>
+        </div>
         <div id="messages"></div>
         <div id="input-area">
             <input type="text" id="message-input" placeholder="Type a message..." />
             <div id="buttons-container">
-                <button id="send-button" class="chat-button">Send message</button>
                 <div class="microphone-icon" id="record-button">
                     <svg width="20px" height="20px" viewBox="-5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
                         <title>microphone</title>
@@ -232,8 +274,8 @@
                         </g>
                     </svg>
                 </div>
+                <button id="send-button" class="chat-button">Send message</button>
                 <div id="recording-indicator" class="recording-animation" style="display: none;"></div>
-                <button id="fetchGPTSuggestion" class="chat-button">Get GPT Suggestions</button>
             </div>
         </div>
     </div>
@@ -405,35 +447,41 @@
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', role === 'user' ? 'user' : 'assistant');
 
+            const contentDiv = document.createElement('div');
+            contentDiv.classList.add('message-content');
+
             const usernameDiv = document.createElement('div');
             usernameDiv.classList.add('username');
-            if (role === 'user') {
-                usernameDiv.textContent = '';
-            } else {
+            if (role === 'assistant') {
                 const duckIcon = document.createElement('div');
+                duckIcon.classList.add('duck-icon');
                 duckIcon.innerHTML = `
-                    <svg class="duck-icon" viewBox="0 0 512 512">
-                        <style type="text/css">
-                            .st0{fill:#fff;}
-                        </style>
-                        <g>
-                            <path class="st0" d="M442.973,250.491c-25.635,18.05-196.165,53.474-141.134-74.936c3.975-11.693,6.732-29.452,6.732-42.457
-                                c0-64.839-53.389-117.403-119.24-117.403c-50.361,0-93.398,30.764-110.867,74.224c-34.196,6.826-42.062-6.929-48.861-22.794
-                                C22.261,50.005,3.509,54.898,0.255,76.915c-2.288,15.462,10.727,57.347,44.004,70.52c-9.423,4.482-17.365,10.671-24.444,18.754
-                                c-9.507,10.877,2.654,29.198,16.147,24.566c12.733-4.37,32.433-6.001,45.419-6.358c5.814,13.109,13.09,24.398,19.972,33.568
-                                c7.351,9.799-3.319,16.916-25.936,53.812c-30.979,50.549-35.874,117.403,2.992,165.822
-                                c46.497,57.937,139.418,58.706,242.137,58.706c141.998,0,178.706-146.076,188.466-205.456
-                                C521.529,214.702,493.813,214.702,442.973,250.491z M153.119,131.945c-10.802,0-19.559-8.758-19.559-19.569
-                                c0-10.802,8.758-19.569,19.559-19.569c10.811,0,19.569,8.767,19.569,19.569C172.688,123.187,163.93,131.945,153.119,131.945z"/>
+                    <svg width="62" height="54" viewBox="0 0 123 109" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M0 47.5C0 21.2665 21.2665 0 47.5 0C73.7335 0 95 21.2665 95 47.5V109H0V47.5Z" fill="#EA37A5"/>
+                        <path d="M21 50C21 26.804 39.804 8 63 8C86.196 8 105 26.804 105 50V109H21V50Z" fill="#FFDA4C"/>
+                        <mask id="mask0_243_270" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="21" y="8" width="84" height="101">
+                            <path d="M21 50C21 26.804 39.804 8 63 8C86.196 8 105 26.804 105 50V109H21V50Z" fill="white"/>
+                        </mask>
+                        <g mask="url(#mask0_243_270)">
+                            <path d="M16 50C16 24.0426 37.0426 3 63 3C88.957 3 110 24.0426 110 50H100C100 29.5655 83.435 13 63 13C42.5655 13 26 29.5655 26 50H16ZM16 109V50C16 24.0426 37.0426 3 63 3V13C42.5655 13 26 29.5655 26 50V109H16ZM63 3C88.957 3 110 24.0426 110 50V109H100V50C100 29.5655 83.435 13 63 13V3Z" fill="black"/>
                         </g>
+                        <path d="M119.766 62.2453L104.521 52.9295C103.855 52.5223 103 53.0018 103 53.7828V74.9551C103 75.7872 103.957 76.2553 104.614 75.7444L119.858 63.8879C120.41 63.4586 120.362 62.6099 119.766 62.2453Z" fill="#FFDA4C" stroke="black" stroke-width="5"/>
+                        <path d="M84 48C86.7614 48 89 45.7614 89 43C89 40.2386 86.7614 38 84 38C81.2386 38 79 40.2386 79 43C79 45.7614 81.2386 48 84 48Z" fill="black"/>
                     </svg>
                 `;
+
                 messageDiv.appendChild(duckIcon);
+                usernameDiv.textContent = 'Didi';
+                contentDiv.style.marginLeft = '4rem';
+            } else {
+                usernameDiv.textContent = 'You';
+                usernameDiv.style.marginRight = '1rem';
             }
-            messageDiv.appendChild(usernameDiv);
 
             const contentFragment = processContent(content);
-            messageDiv.appendChild(contentFragment);
+            contentDiv.appendChild(usernameDiv);
+            contentDiv.appendChild(contentFragment);
+            messageDiv.appendChild(contentDiv);
 
             return messageDiv;
         }
@@ -448,16 +496,17 @@
                         const messageDiv = createMessageElement(msg.role, msg.content);
                         messagesContainer.appendChild(messageDiv);
                     });
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     break;
 
                 case 'displayMessage':
                     const messageDiv = createMessageElement(message.role, message.content);
                     messagesContainer.appendChild(messageDiv);
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     break;
             }
         });
+
     </script>
 </body>
 </html>

@@ -63,17 +63,27 @@ export function activate(context: vscode.ExtensionContext) {
         if (editor) {
             let document = editor.document;
             let text = document.getText();
-
-            await showText(text);
+    
+            panel.webview.postMessage({
+                command: 'displayMessage',
+                role: 'user',
+                content: `Captured Code:\n\`\`\`\n${text}\n\`\`\``
+            });
+    
+            GlobalconversationHistory.push({
+                role: 'user',
+                content: `Captured Code:\n\`\`\`\n${text}\n\`\`\``
+            });
+    
         } else {
             vscode.window.showInformationMessage('No active editor.');
         }
-    });
+    });    
 
     let disposable3 = vscode.commands.registerCommand('gptint.showGptPanel', () => {
         panel = vscode.window.createWebviewPanel(
             'gptPanel',
-            'Quack Debugging Assistant',
+            'Yellow Duck Debugger',
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true
