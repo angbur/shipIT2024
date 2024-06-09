@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with GPT</title>
+    <style>
+        .hljs {
+            display: block;
+            overflow-x: auto;
+            padding: 0.5em;
+            color: #abb2bf;
+        }
+        .language-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 2px 6px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: fit-content;
+            max-width: 80%;
+        }
+
+        .user {
+            background-color: #2f6896;
+            color: white;
+            margin-left: auto;
+            align-self: flex-end;
+        }
+
+        .assistant {
+            background-color: #575656;
+            color: #dcdcdc;
+            margin-right: auto;
+            align-self: flex-start;
+        }
+
+        .username {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .user .username {
+            color: #d1d5d7;
+        }
+
+        .assistant .username {
+            color: #f9f9ee;
+        }
+
+        .copyButton {
+            position: absolute;
+            top: 5px; 
+            right: 5px; 
+            border: none;
+            background: rgba(0, 0, 0, 0.3);
+            color : white;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 0;
+            text-transform: uppercase;
+            font-size: 0.75em;
+        }
+        .copyButton:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .codeBlock {
+            position: relative;
+            background: #282c34;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px; 
+        }
+
+        pre code {
+            display: block;
+            overflow-x: auto;
+            padding: 0.5em;
+            border-radius: 4px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 60px;
+        }
+        #input-area {
+            display: flex;
+            padding: 10px;
+            background-color: #2c2c2c;
+        }
+        #input-area button {
+            padding: 10px 20px;
+            border: 1px solid #cfcfcf;
+            border-radius: 4px;
+            color: #cfcfcf;
+            background: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        #input-area input {
+            flex-grow: 1;
+            padding: 10px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+        }
+        #buttons-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        #buttons-container:hover #send-button {
+            transition: all 0.3s;
+        }
+        #buttons-container:hover #fetchGPTSuggestion {
+            display: block;
+            opacity: 1;
+        }
+        #fetchGPTSuggestion {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            transition: all 0.3s;
+        }
+        #input-area button.default {
+            position: relative;
+            bottom: auto;
+            align-items: flex-end;
+        }
+
+        #input-area button.non-default {
+            position: absolute;
+            bottom: 100%;
+            align-items: flex-end;
+        }
+        .chat-button {
+            padding: 10px 20px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            color: black;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .duck-icon {
+            width: 20px;
+            height: 20px;
+        }
+        .microphone-icon {
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .recording-animation {
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+            background: radial-gradient(circle, rgba(255,0,0,1) 0%, rgba(255,0,0,0) 70%);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type a message..." />
+            <div id="buttons-container">
+                <button id="send-button" class="chat-button">Send message</button>
+                <div class="microphone-icon" id="record-button">
+                    <svg width="20px" height="20px" viewBox="-5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+                        <title>microphone</title>
+                        <desc>Created with Sketch Beta.</desc>
+                        <defs></defs>
+                        <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+                            <g id="Icon-Set" sketch:type="MSLayerGroup" transform="translate(-105.000000, -307.000000)" fill="#ffffff">
+                                <path d="M111,314 C111,311.238 113.239,309 116,309 C118.761,309 121,311.238 121,314 L121,324 C121,326.762 118.761,329 116,329 C113.239,329 111,326.762 111,324 L111,314 L111,314 Z M116,331 C119.866,331 123,327.866 123,324 L123,314 C123,310.134 119.866,307 116,307 C112.134,307 109,310.134 109,314 L109,324 C109,327.866 112.134,331 116,331 L116,331 Z M127,326 L125,326 C124.089,330.007 120.282,333 116,333 C111.718,333 107.911,330.007 107,326 L105,326 C105.883,330.799 110.063,334.51 115,334.955 L115,337 L114,337 C113.448,337 113,337.448 113,338 C113,338.553 113.448,339 114,339 L118,339 C118.552,339 119,338.553 119,338 C119,337.448 118.552,337 118,337 L117,337 L117,334.955 C121.937,334.51 126.117,330.799 127,326 L127,326 Z" id="microphone" sketch:type="MSShapeGroup"></path>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+                <div id="recording-indicator" class="recording-animation" style="display: none;"></div>
+                <button id="fetchGPTSuggestion" class="chat-button">Get GPT Suggestions</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const vscode = acquireVsCodeApi();
+            const sendButton = document.getElementById('send-button');
+            const fetchGPTSuggestionButton = document.getElementById('fetchGPTSuggestion');
+            const recordButton = document.getElementById('record-button');
+            const recordingIndicator = document.getElementById('recording-indicator');
+            const buttonsContainer = document.getElementById('buttons-container');
+            const input = document.getElementById('message-input');
+
+            let defaultButton = 'send';
+            let mediaRecorder;
+            let audioChunks = [];
+
+            function updateButtonVisibility() {
+                sendButton.classList.remove('default', 'non-default');
+                fetchGPTSuggestionButton.classList.remove('default', 'non-default');
+                if (defaultButton === 'send') {
+                    sendButton.classList.add('default');
+                    fetchGPTSuggestionButton.classList.add('non-default');
+                    buttonsContainer.prepend(sendButton);
+                } else {
+                    sendButton.classList.add('non-default');
+                    fetchGPTSuggestionButton.classList.add('default');
+                    buttonsContainer.prepend(fetchGPTSuggestionButton);
+                }
+            }
+
+            updateButtonVisibility();
+
+            sendButton.addEventListener('click', () => {
+                const message = input.value;
+                input.value = '';
+                if (message) {
+                    vscode.postMessage({
+                        command: 'sendMessageToGPT',
+                        text: message
+                    });
+                }
+                defaultButton = 'send';
+                updateButtonVisibility();
+            });
+
+            fetchGPTSuggestionButton.addEventListener('click', () => {
+                vscode.postMessage({
+                    command: 'getGPTSuggestion'
+                });
+                defaultButton = 'fetch';
+                updateButtonVisibility();
+            });
+
+            buttonsContainer.addEventListener('mouseover', () => {
+                if (defaultButton === 'send') {
+                    fetchGPTSuggestionButton.style.display = 'block';
+                } else {
+                    sendButton.style.display = 'block';
+                }
+            });
+
+            buttonsContainer.addEventListener('mouseout', () => {
+                if (defaultButton === 'send') {
+                    fetchGPTSuggestionButton.style.display = 'none';
+                } else {
+                    sendButton.style.display = 'none';
+                }
+            });
+
+            input.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    if (defaultButton === 'send') {
+                        sendButton.click();
+                    } else if (defaultButton === 'fetch') {
+                        fetchGPTSuggestionButton.click();
+                    }
+                }
+            });
+
+            recordButton.addEventListener('click', async () => {
+                console.log('Record button clicked');
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    console.log('Stopping the recording');
+                    mediaRecorder.stop();
+                    recordingIndicator.style.display = 'none';
+                } else {
+                    console.log('Starting the recording');
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        audioChunks = [];
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64AudioMessage = reader.result.split(',')[1];
+                            vscode.postMessage({
+                                command: 'sendAudioMessageToGPT',
+                                audio: base64AudioMessage
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+                    };
+                    mediaRecorder.start();
+                    recordingIndicator.style.display = 'block';
+                }
+            });
+        });
+
+        function processContent(content) {
+            const fragment = document.createDocumentFragment();
+            const codeRegexWithLang = /```(\w+)?\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let match;
+
+            while ((match = codeRegexWithLang.exec(content)) !== null) {
+                const textBeforeCode = content.slice(lastIndex, match.index);
+                if (textBeforeCode) {
+                    fragment.appendChild(document.createTextNode(textBeforeCode));
+                }
+
+                const lang = match[1];
+                const codeBlockWrapper = document.createElement('div');
+                const codeBlock = document.createElement('div');
+                const codeContent = document.createElement('code');
+                if (lang) {
+                    const languageLabel = document.createElement('div');
+                    languageLabel.classList.add('language-label');
+                    languageLabel.textContent = lang.toUpperCase();
+                    codeBlock.appendChild(languageLabel);
+                }
+
+                const copyButton = document.createElement('button');
+                copyButton.classList.add('copyButton');
+                copyButton.textContent = 'Copy';
+                copyButton.onclick = function() {
+                    navigator.clipboard.writeText(codeContent.textContent).then(() => {
+                        console.log('Code copied to clipboard!');
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(() => copyButton.textContent = 'Copy', 2000);
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                    });
+                };
+
+                codeContent.textContent = match[2];
+                codeBlock.appendChild(codeContent);
+                hljs.highlightElement(codeContent);
+                codeBlock.appendChild(copyButton);
+
+                codeBlockWrapper.appendChild(codeBlock);
+                fragment.appendChild(codeBlockWrapper);
+
+                lastIndex = codeRegexWithLang.lastIndex;
+            }
+
+            const remainingText = content.slice(lastIndex);
+            if (remainingText) {
+                fragment.appendChild(document.createTextNode(remainingText));
+            }
+
+            return fragment;
+        }
+
+        function createMessageElement(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role === 'user' ? 'user' : 'assistant');
+
+            const usernameDiv = document.createElement('div');
+            usernameDiv.classList.add('username');
+            if (role === 'user') {
+                usernameDiv.textContent = '';
+            } else {
+                const duckIcon = document.createElement('div');
+                duckIcon.innerHTML = `
+                    <svg class="duck-icon" viewBox="0 0 512 512">
+                        <style type="text/css">
+                            .st0{fill:#fff;}
+                        </style>
+                        <g>
+                            <path class="st0" d="M442.973,250.491c-25.635,18.05-196.165,53.474-141.134-74.936c3.975-11.693,6.732-29.452,6.732-42.457
+                                c0-64.839-53.389-117.403-119.24-117.403c-50.361,0-93.398,30.764-110.867,74.224c-34.196,6.826-42.062-6.929-48.861-22.794
+                                C22.261,50.005,3.509,54.898,0.255,76.915c-2.288,15.462,10.727,57.347,44.004,70.52c-9.423,4.482-17.365,10.671-24.444,18.754
+                                c-9.507,10.877,2.654,29.198,16.147,24.566c12.733-4.37,32.433-6.001,45.419-6.358c5.814,13.109,13.09,24.398,19.972,33.568
+                                c7.351,9.799-3.319,16.916-25.936,53.812c-30.979,50.549-35.874,117.403,2.992,165.822
+                                c46.497,57.937,139.418,58.706,242.137,58.706c141.998,0,178.706-146.076,188.466-205.456
+                                C521.529,214.702,493.813,214.702,442.973,250.491z M153.119,131.945c-10.802,0-19.559-8.758-19.559-19.569
+                                c0-10.802,8.758-19.569,19.559-19.569c10.811,0,19.569,8.767,19.569,19.569C172.688,123.187,163.93,131.945,153.119,131.945z"/>
+                        </g>
+                    </svg>
+                `;
+                messageDiv.appendChild(duckIcon);
+            }
+            messageDiv.appendChild(usernameDiv);
+
+            const contentFragment = processContent(content);
+            messageDiv.appendChild(contentFragment);
+
+            return messageDiv;
+        }
+
+        window.addEventListener('message', event => {
+            const message = event.data;
+            const messagesContainer = document.getElementById('messages');
+
+            switch (message.command) {
+                case 'showGptSuggestion':
+                    message.content.forEach(msg => {
+                        const messageDiv = createMessageElement(msg.role, msg.content);
+                        messagesContainer.appendChild(messageDiv);
+                    });
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+                    break;
+
+                case 'displayMessage':
+                    const messageDiv = createMessageElement(message.role, message.content);
+                    messagesContainer.appendChild(messageDiv);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
